@@ -62,12 +62,41 @@ class JobPost {
         $stmt->bindParam(':created_by', $created_by);
         return $stmt->execute();
     }
-
+    public function delete($job_post_id) {
+        
+        $checkQuery = "SELECT COUNT(*) FROM applications WHERE job_post_id = :job_post_id";
+        $stmt = $this->conn->prepare($checkQuery);
+        $stmt->bindParam(':job_post_id', $job_post_id);
+        $stmt->execute();
+        $applicationCount = $stmt->fetchColumn();
+ 
+        if ($applicationCount > 0) {
+            throw new Exception("Cannot delete job post with existing applications.");
+        }
+ 
+       
+        $query = "DELETE FROM " . $this->table_name . " WHERE id = :job_post_id";
+        $stmt = $this->conn->prepare($query);
+        $stmt->bindParam(':job_post_id', $job_post_id);
+        return $stmt->execute();
+    }
     public function getAll() {
         $query = "SELECT * FROM " . $this->table_name;
         $stmt = $this->conn->prepare($query);
         $stmt->execute();
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+    public function update($job_post_id, $title, $description, $location, $expiry_date, $salary, $requirements) {
+        $query = "UPDATE " . $this->table_name . " SET title = :title, description = :description, location = :location, expiry_date = :expiry_date, salary = :salary, requirements = :requirements WHERE id = :job_post_id";
+        $stmt = $this->conn->prepare($query);
+        $stmt->bindParam(':job_post_id', $job_post_id);
+        $stmt->bindParam(':title', $title);
+        $stmt->bindParam(':description', $description);
+        $stmt->bindParam(':location', $location);
+        $stmt->bindParam(':expiry_date', $expiry_date);
+        $stmt->bindParam(':salary', $salary);
+        $stmt->bindParam(':requirements', $requirements);
+        return $stmt->execute();
     }
 }
 
@@ -107,7 +136,19 @@ class Application {
         $stmt->execute();
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
+    public function delete($application_id) {
+        try {
+            $query = "DELETE FROM " . $this->table_name . " WHERE id = :application_id";
+            $stmt = $this->conn->prepare($query);
+            $stmt->bindParam(':application_id', $application_id);
+            return $stmt->execute();
+        } catch (PDOException $e) {
+            throw new Exception("Error deleting application: " . $e->getMessage());
+        }
+    }
 }
+
+
 
 class Message {
     private $conn;
@@ -117,45 +158,62 @@ class Message {
         $this->conn = $db;
     }
 
+
     public function send($sender_id, $receiver_id, $content, $parent_message_id = null) {
-        $query = "INSERT INTO " . $this->table_name . " (sender_id, receiver_id, content, parent_message_id, timestamp) 
-                  VALUES (:sender_id, :receiver_id, :content, :parent_message_id, NOW())";
-        $stmt = $this->conn->prepare($query);
-        $stmt->bindParam(':sender_id', $sender_id);
-        $stmt->bindParam(':receiver_id', $receiver_id);
-        $stmt->bindParam(':content', $content);
-        $stmt->bindParam(':parent_message_id', $parent_message_id);
-        return $stmt->execute();
+        try {
+            $query = "INSERT INTO " . $this->table_name . " (sender_id, receiver_id, content, parent_message_id, timestamp) 
+                      VALUES (:sender_id, :receiver_id, :content, :parent_message_id, NOW())";
+            $stmt = $this->conn->prepare($query);
+            $stmt->bindParam(':sender_id', $sender_id);
+            $stmt->bindParam(':receiver_id', $receiver_id);
+            $stmt->bindParam(':content', $content);
+            $stmt->bindParam(':parent_message_id', $parent_message_id);
+            return $stmt->execute();
+        } catch (PDOException $e) {
+          
+            error_log("Error sending message: " . $e->getMessage());
+            return false;
+        }
     }
-    
+
+ 
     public function getMessagesBetweenUsers($user_id, $other_user_id) {
-        $query = "SELECT messages.id, messages.content, messages.sender_id, messages.timestamp, users.username 
-                  FROM " . $this->table_name . " 
-                  INNER JOIN users ON messages.sender_id = users.id 
-                  WHERE (sender_id = :user_id AND receiver_id = :other_user_id) 
-                  OR (sender_id = :other_user_id AND receiver_id = :user_id)
-                  ORDER BY messages.timestamp ASC";
-        $stmt = $this->conn->prepare($query);
-        $stmt->bindParam(':user_id', $user_id);
-        $stmt->bindParam(':other_user_id', $other_user_id);
-        $stmt->execute();
-        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        try {
+            $query = "SELECT messages.id, messages.content, messages.sender_id, messages.timestamp, users.username 
+                      FROM " . $this->table_name . " 
+                      INNER JOIN users ON messages.sender_id = users.id 
+                      WHERE (sender_id = :user_id AND receiver_id = :other_user_id) 
+                      OR (sender_id = :other_user_id AND receiver_id = :user_id)
+                      ORDER BY messages.timestamp ASC";
+            $stmt = $this->conn->prepare($query);
+            $stmt->bindParam(':user_id', $user_id);
+            $stmt->bindParam(':other_user_id', $other_user_id);
+            $stmt->execute();
+            return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        } catch (PDOException $e) {
+          
+            error_log("Error fetching messages: " . $e->getMessage());
+            return [];
+        }
     }
+
     
-
     public function getApplicantsWhoMessaged($hr_id) {
-        $query = "SELECT DISTINCT users.id, users.username 
-                  FROM messages 
-                  INNER JOIN users ON messages.sender_id = users.id 
-                  WHERE messages.receiver_id = :hr_id";
-        $stmt = $this->conn->prepare($query);
-        $stmt->bindParam(':hr_id', $hr_id);
-        $stmt->execute();
-        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        try {
+            $query = "SELECT DISTINCT users.id, users.username 
+                      FROM messages 
+                      INNER JOIN users ON messages.sender_id = users.id 
+                      WHERE messages.receiver_id = :hr_id";
+            $stmt = $this->conn->prepare($query);
+            $stmt->bindParam(':hr_id', $hr_id);
+            $stmt->execute();
+            return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        } catch (PDOException $e) {
+            // Log and handle error
+            error_log("Error fetching applicants: " . $e->getMessage());
+            return [];
+        }
     }
-
 }
 
-
 ?>
-
