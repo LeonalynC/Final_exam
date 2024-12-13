@@ -18,7 +18,7 @@ $role = $_SESSION['role'];
 $user_id = $_SESSION['user_id'];
 
 $allJobPosts = $jobPost->getAll();
-$hr_id = ($role === 'HR') ? $user_id : 1; 
+$hr_id = ($role === 'HR') ? $user_id : 1;
 
 if ($role === 'HR') {
     $applicants = $messageModel->getApplicantsWhoMessaged($user_id);
@@ -29,15 +29,50 @@ if ($role === 'HR') {
 }
 
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
-    if (isset($_POST['update_application_status'])) {
-        $application_id = $_POST['application_id'];
-        $status = $_POST['status'];
-        $application->updateStatus($application_id, $status);
-    }
-    if (isset($_POST['send_message'])) {
-        $receiver_id = ($role === 'HR') ? $_POST['receiver_id'] : $hr_id;
-        $content = $_POST['content'];
-        $messageModel->send($user_id, $receiver_id, $content);
+    try {
+        if (isset($_POST['update_application_status'])) {
+            $application_id = $_POST['application_id'];
+            $status = $_POST['status'];
+            $application->updateStatus($application_id, $status);
+        }
+        if (isset($_POST['send_message'])) {
+            $receiver_id = ($role === 'HR') ? $_POST['receiver_id'] : $hr_id;
+            $content = $_POST['content'];
+            $messageModel->send($user_id, $receiver_id, $content);
+
+    
+            if ($role === 'HR' && $selected_applicant_id) {
+                $messages = $messageModel->getMessagesBetweenUsers($user_id, $selected_applicant_id);
+            } else {
+                $messages = $messageModel->getMessagesBetweenUsers($user_id, $hr_id);
+            }
+        }
+        if (isset($_POST['delete_job_post'])) {
+            $job_post_id = $_POST['job_post_id'];
+            $jobPost->delete($job_post_id);
+            header("Location: dashboard.php");
+            exit();
+        }
+        if (isset($_POST['update_job_post'])) {
+            $job_post_id = $_POST['job_post_id'];
+            $title = $_POST['title'];
+            $description = $_POST['description'];
+            $location = $_POST['location'];
+            $expiry_date = $_POST['expiry_date'];
+            $salary = $_POST['salary'];
+            $requirements = $_POST['requirements'];
+            $jobPost->update($job_post_id, $title, $description, $location, $expiry_date, $salary, $requirements);
+            header("Location: dashboard.php");
+            exit();
+        }
+        if (isset($_POST['delete_application'])) {
+            $application_id = $_POST['application_id'];
+            $application->delete($application_id);
+            header("Location: dashboard.php");
+            exit();
+        }
+    } catch (Exception $e) {
+        echo "Error: " . $e->getMessage();
     }
 }
 ?>
@@ -48,18 +83,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="styles/main.css">
-    <title>FindHire - Dashboard</title>
-</head>
-<body>
-<header>
-    <div class="container">
-    <h1 style="color: VIOLET; -webkit-text-stroke: 0.1px white; font-weight: bold; font-size: 100px; text-shadow: -2px -2px 0 black, 2px -2px 0 black, -2px 2px 0 black, 2px 2px 0 black; ">FindHire 💻</h1>
-
-        <nav>
-            <ul>
-            <li><a href="dashboard.php" style="color: violet;">Dashboard</a></li>
-            <li><a href="logout.php" style="color: pink;">Logout</a></li>
-            <style>
+    <style>
 @import url('https://fonts.googleapis.com/css2?family=Quicksand:wght@300;400;500&display=swap');
 @import url('https://fonts.googleapis.com/css2?family=Lobster&display=swap');
 @import url('https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@300;400&display=swap');
@@ -399,16 +423,25 @@ button.primary:hover {
 }
 
 </style>
+    <title>FindHire - Dashboard</title>
+</head>
+<body>
+<header>
+    <div class="container">
+    <h1 style="color: VIOLET; -webkit-text-stroke: 0.1px white; font-weight: bold; font-size: 100px; text-shadow: -2px -2px 0 black, 2px -2px 0 black, -2px 2px 0 black, 2px 2px 0 black; ">FindHire 💻</h1>
+        <nav>
+            <ul>
+            <li><a href="dashboard.php" style="color: violet;">Dashboard</a></li>
+            <li><a href="logout.php" style="color: pink;">Logout</a></li>
             </ul>
         </nav>
     </div>
 </header>
 <div class="container">
-<h1 style="color: pink; -webkit-text-stroke: 0.1px white; font-weight: bold; font-size: 50px; text-shadow: -2px -2px 0 black, 2px -2px 0 black, -2px 2px 0 black, 2px 2px 0 black; ">Welcome to FindHire!</h1>
-
+    <h1 style="color: VIOLET; -webkit-text-stroke: 0.1px white; font-weight: bold; font-size: 100px; text-shadow: -2px -2px 0 black, 2px -2px 0 black, -2px 2px 0 black, 2px 2px 0 black; "> Welcome to FindHire!</h1>
 
     <?php if ($role == 'HR'): ?>
-        <h2 style="color: pink; -webkit-text-stroke: 0.1px white; font-weight: bold; font-size: 50px; text-shadow: -2px -2px 0 black, 2px -2px 0 black, -2px 2px 0 black, 2px 2px 0 black; ">HR Dashboard 👩🏻‍💻</h2>
+        <h2 style="color: VIOLET; -webkit-text-stroke: 0.1px white; font-weight: bold; font-size: 100px; text-shadow: -2px -2px 0 black, 2px -2px 0 black, -2px 2px 0 black, 2px 2px 0 black; ">HR Dashboard 👩🏻‍💻</h2>
         <h3>Create Job Post</h3>
         <form method="POST" action="job_post.php">
             <input type="text" name="title" placeholder="Job Title" required>
@@ -428,6 +461,25 @@ button.primary:hover {
                 <p><strong>Location:</strong> <?php echo htmlspecialchars($post['location']); ?></p>
                 <p><strong>Salary:</strong> <?php echo htmlspecialchars($post['salary']); ?></p>
                 <p><strong>Requirements:</strong> <?php echo htmlspecialchars($post['requirements']); ?></p>
+                
+           
+                <form method="POST" action="">
+                    <input type="hidden" name="job_post_id" value="<?php echo $post['id']; ?>">
+                    <input type="text" name="title" value="<?php echo htmlspecialchars($post['title']); ?>" required>
+                    <textarea name="description" required><?php echo htmlspecialchars($post['description']); ?></textarea>
+                    <input type="text" name="location" value="<?php echo htmlspecialchars($post['location']); ?>" required>
+                    <input type="date" name="expiry_date" value="<?php echo htmlspecialchars($post['expiry_date']); ?>" required>
+                    <input type="text" name="salary" value="<?php echo htmlspecialchars($post['salary']); ?>" required>
+                    <textarea name="requirements" required><?php echo htmlspecialchars($post['requirements']); ?></textarea>
+                    <button type="submit" name="update_job_post">Update Job Post</button>
+                </form>
+                
+       
+                <form method="POST" action="">
+                    <input type="hidden" name="job_post_id" value="<?php echo $post['id']; ?>">
+                    <button type="submit" name="delete_job_post">Delete Job Post</button>
+                </form>
+
                 <p>Applications:</p>
                 <?php
                 $applications = $application->getApplicationsByJob($post['id']);
@@ -448,6 +500,12 @@ button.primary:hover {
                             </select>
                             <button type="submit" name="update_application_status">Update Status</button>
                         </form>
+                        
+                 
+                        <form method="POST" action="">
+                            <input type="hidden" name="application_id" value="<?php echo $app['id']; ?>">
+                            <button type="submit" name="delete_application">Delete Application</button>
+                        </form>
                     </div>
                 <?php endforeach; ?>
             </div>
@@ -455,49 +513,48 @@ button.primary:hover {
 
         <h3>Messages</h3>
         <?php if (!empty($applicants)): ?>
-    <form method="GET" action="">
-        <label for="applicant_id">Select Applicant:</label>
-        <select name="applicant_id" id="applicant_id" onchange="this.form.submit()">
-            <option value="">-- Select an Applicant --</option>
-            <?php foreach ($applicants as $applicant): ?>
-                <option value="<?php echo $applicant['id']; ?>" 
-                    <?php echo ($selected_applicant_id == $applicant['id']) ? 'selected' : ''; ?>>
-                    <?php echo htmlspecialchars($applicant['username']); ?>
-                </option>
-            <?php endforeach; ?>
-        </select>
-    </form>
+            <form method="GET" action="">
+                <label for="applicant_id">Select Applicant:</label>
+                <select name="applicant_id" id="applicant_id" onchange="this.form.submit()">
+                    <option value="">-- Select an Applicant --</option>
+                    <?php foreach ($applicants as $applicant): ?>
+                        <option value="<?php echo $applicant['id']; ?>" 
+                            <?php echo ($selected_applicant_id == $applicant['id']) ? 'selected' : ''; ?>>
+                            <?php echo htmlspecialchars($applicant['username']); ?>
+                        </option>
+                    <?php endforeach; ?>
+                </select>
+            </form>
 
-    <?php if ($selected_applicant_id): ?>
-        <h3>Messages with <?php echo htmlspecialchars($applicants[array_search($selected_applicant_id, array_column($applicants, 'id'))]['username']); ?>:</h3>
-        <div class="messages-container">
-            <?php if (!empty($messages)): ?>
-                <?php foreach ($messages as $msg): ?>
-                    <div>
-                        <strong><?php echo htmlspecialchars($msg['username']); ?>:</strong>
-                        <p><?php echo htmlspecialchars($msg['content']); ?></p>
-                    </div>
-                <?php endforeach; ?>
+            <?php if ($selected_applicant_id): ?>
+                <h3>Messages with <?php echo htmlspecialchars($applicants[array_search($selected_applicant_id, array_column($applicants, 'id'))]['username']); ?>:</h3>
+                <div class="messages-container">
+                    <?php if (!empty($messages)): ?>
+                        <?php foreach ($messages as $msg): ?>
+                            <div>
+                                <strong><?php echo htmlspecialchars($msg['username']); ?>:</strong>
+                                <p><?php echo htmlspecialchars($msg['content']); ?></p>
+                            </div>
+                        <?php endforeach; ?>
+                    <?php else: ?>
+                        <p>No messages yet.</p>
+                    <?php endif; ?>
+                </div>
+                
+                <form method="POST" action="">
+                    <input type="hidden" name="receiver_id" value="<?php echo $selected_applicant_id; ?>">
+                    <textarea name="content" placeholder="Your reply" required></textarea>
+                    <button type="submit" name="send_message">Reply</button>
+                </form>
             <?php else: ?>
-                <p>No messages yet.</p>
+                <p>Select an applicant to view messages.</p>
             <?php endif; ?>
-        </div>
-        
-        <form method="POST" action="">
-            <input type="hidden" name="receiver_id" value="<?php echo $selected_applicant_id; ?>">
-            <textarea name="content" placeholder="Your reply" required></textarea>
-            <button type="submit" name="send_message">Reply</button>
-        </form>
-    <?php else: ?>
-        <p>Select an applicant to view messages.</p>
-    <?php endif; ?>
-<?php else: ?>
-    <p>No applicants have messaged you yet.</p>
-<?php endif; ?>
-
+        <?php else: ?>
+            <p>No applicants have messaged you yet.</p>
+        <?php endif; ?>
 
     <?php else: ?>
-        <h2 style="color: pink; -webkit-text-stroke: 0.1px white; font-weight: bold; font-size: 50px; text-shadow: -2px -2px 0 black, 2px -2px 0 black, -2px 2px 0 black, 2px 2px 0 black;">Applicant Dashboard 🤵🏻</h2>
+        <h2 style="color: VIOLET; -webkit-text-stroke: 0.1px white; font-weight: bold; font-size: 100px; text-shadow: -2px -2px 0 black, 2px -2px 0 black, -2px 2px 0 black, 2px 2px 0 black; ">Applicant Dashboard 🤵🏻</h2>
 
         <h3>Available Jobs</h3>
         <?php foreach ($allJobPosts as $post): ?>
