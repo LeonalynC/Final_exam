@@ -459,6 +459,7 @@ button.primary:hover {
                 <strong><?php echo htmlspecialchars($post['title']); ?></strong>
                 <p><?php echo htmlspecialchars($post['description']); ?></p>
                 <p><strong>Location:</strong> <?php echo htmlspecialchars($post['location']); ?></p>
+                <p><strong>Expiry Date:</strong> <?php echo htmlspecialchars($post['expiry_date']); ?></p>
                 <p><strong>Salary:</strong> <?php echo htmlspecialchars($post['salary']); ?></p>
                 <p><strong>Requirements:</strong> <?php echo htmlspecialchars($post['requirements']); ?></p>
                 
@@ -489,7 +490,7 @@ button.primary:hover {
                         <p>Status: <?php echo htmlspecialchars($app['status']); ?></p>
                         <p>Message: <?php echo htmlspecialchars($app['message']); ?></p>
                         <?php if (!empty($app['resume'])): ?>
-                            <p>Resume: <a href="uploads/<?php echo htmlspecialchars($app['resume']); ?>" target="_blank">View Resume</a></p>
+                            <p>Resume: <a href="uploads/<?php echo htmlspecialchars($app['resume']); ?>" target="_blank">View Resume🩷</a></p>
                         <?php endif; ?>
                         <form method="POST" action="">
                             <input type="hidden" name="application_id" value="<?php echo $app['id']; ?>">
